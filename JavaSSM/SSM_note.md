@@ -50,6 +50,8 @@
 
 ```java
 @Configuration
+@ComponentScan("com.orion")
+@PropertySource("classpath:jdbc.properties")
 @Import({JdbcConfig.class})//多个请用数组，单个不用加大括号也行
 public class SpringConfig{
 }
@@ -102,3 +104,91 @@ public class JdbcConfig(){
 ## 总结
 
 ![image-20230106124433297](images/image-20230106124433297.png)
+
+# Spring整合Mybatis
+
+多import一个就行
+
+```java
+@Configuration
+@ComponentScan("com.orion")
+@PropertySource("classpath:jdbc.properties")
+@Import({JdbcConfig.class,MybatisConfig.class})//多个请用数组，单个不用加大括号也行
+public class SpringConfig{
+}
+```
+
+
+
+要导的包
+
+```xml
+<dependency>
+	<groupId>org.springframework</groupId>
+	<artifactId>spring-jdbc</artifactId>
+	<version>5.2.10.RELEASE</version>
+</dependency>
+<dependency>
+	<groupId>org.mybatis</groupId>
+	<artifactId>mybatis-spring</artifactId>
+	<version>1.3.0</version>
+</dependency>
+```
+
+只有加注释的地方是动态的，其他地方都是固定格式
+
+```java
+public class MybatisConfig(){
+	@Bean
+	public SqlSessionFactoryBean sqlSessionFactory(DataSource dataSource){
+		SqlSessionFactoryBean ssfb new SqlSessionFactoryBean();
+		ssfb.setTypeAliasesPackage("com.itheima.domain");//扫描类型别名的
+		ssfb.setDataSource(dataSource);
+		return ssfb;
+    }
+	@Bean
+	public MapperScannerConfigurer mapperScannerConfigurer(){
+		MapperScannerConfigurer msc new MapperScannerConfigurer();
+		msc.setBasePackage("com.itheima.dao");//扫描映射的包
+		return msc;
+    }
+}
+```
+
+## 补充（摘自黑马的SSM笔记）：FactoryBean都是造对象的
+
+查看源码会发现，FactoryBean接口其实会有三个方法，分别是:
+
+```java
+T getObject() throws Exception;
+
+Class<?> getObjectType();
+
+default boolean isSingleton() {
+		return true;
+}
+```
+
+方法一:getObject()，被重写后，在方法中进行对象的创建并返回
+
+方法二:getObjectType(),被重写后，主要返回的是被创建类的Class对象
+
+方法三:没有被重写，因为它已经给了默认值，从方法名中可以看出其作用是设置对象是否为单例，默认true
+
+# Spring整合JUnit
+
+下面是一个测试类示例，前两行是固定格式
+
+```java
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(classes = SpringConfig.class)
+public class AccountServiceTest(){
+	@Autowired
+	private AccountService accountService;
+	@Test
+	public void testFindById(){
+	System.out.println(accountService.findById(2));
+    }
+}
+```
+
