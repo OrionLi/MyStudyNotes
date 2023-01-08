@@ -1,4 +1,4 @@
-> 注意：由于本笔记大量使用OCR截图文字识别，所以会出现部分代码缺少等号或者字母出错
+> 注意：由于本笔记大量使用OCR截图文字识别，所以会出现部分代码缺少等号或者字母出错，缺少的注解可以去黑马提供的笔记中的“知识点”部分寻找
 
 # 核心思想：充分解耦
 
@@ -13,13 +13,30 @@
 
 ## SpringConfig
 
-`@Configuration`
+`@Configuration`代表这是一个配置类
 
 `@ComponentScan("com.orion")`,配置多个扫描包时用数组：`@ComponentScan({"com.orion.service","com.orion.dao"})`
 
+### 使用包扫描引入(不能快速知道引入了哪些配置类)
+
+详见Spring_day02 4.3.1
+
+### 使用`@Import`引入
+
+这种方案**要引用的类**可以不用加`@Configuration`注解，但是必须在Spring配置类上使用`@Import`注解手动引入
+需要加载的配置类
+步骤1:去除JdbcConfig类上的注解
+步骤2:在Spring配置类中引入
+
+#### 注意!:
+
+* 扫描注解可以移除(也就是说可以不ComponentScan这个包)
+* `@Import`参数需要的是一个数组，可以引入多个配置类。
+* `@Import`注解在配置类中只能写一次!
+
 ## 自动装配：(括号内为示例)
 
-### 引用类型：@Autowired和@Qualifier("bookDao2")
+### 引用类型：@Autowired按类型注入和附加@Qualifier("bookDao2")改用按名称注入
 
 暴力反射，不用提供setter
 
@@ -340,7 +357,7 @@ public class AccountServiceImpl implements AccountService {
    public class SpringMvcConfig {
    }
    ```
-   
+
 4. 初始化Servlet容器，加载SpringMVC环境，并设置SpringMVC技术处理的请求(见下)
 
 ## bean的加载格式
@@ -415,6 +432,8 @@ public String commonParamDifferentName(@RequestParam("name")String userName int 
 
 ### 实体类
 
+**首先给你的pojo重写toString！！！**
+
 如果形参是个实体类，并且传的属性名和实体类的属性名一样，它就会自动被打包成一个对象
 
 如果你要给实体类里面的对象传值，就用“加点”的方式传
@@ -485,14 +504,6 @@ public String listParamForJson(@RequestBody List<String>likes){
 
 当然，如果形参是实体类，也是加`@RequestBody`就会自动打包
 
-### 总结：`@RequestBody`与`@RequestParam`区别
-* 区别
-  * `@RequestParam`用于接收url地址传参，表单传参【application/X-www-form-urlencoded.】
-  * `@RequestBody`用于接收json数据【application/json】
-* 应用
-  * 后期开发中，发送json格式数据为主，`@RequestBody`,应用较广
-  * 如果发送非json格式数据，选用`@RequestParam`接收请求参数
-
 #### 日期类型参数传递
 
 接收形参时，根据不同的日期格式设置不同的接收方式
@@ -539,7 +550,7 @@ public String toText(){
 }
 ```
 
-### JSON-响应P0J0对象
+### JSON-响应POJO对象
 
 加上`@ResponseBody`，然后直接返回对象，就会自动转JSON
 
@@ -577,13 +588,134 @@ public List<User>toJsonList(){
 	User user1 new User();I
 	user1.setName("传智播客")；
 	user1.setAge(15);
-	User user2 = 	new User();
+	User user2 = new User();
 	user2.setName("黑马程序员")；
 	user2.setAge(12);
 	List<User>userList new ArrayList<~>();
 	userList.add(user1);
 	userList.add(user2);
 	return userList;
+}
+```
+
+ ## REST风格
+
+按照REST风格访问资源时使用行为动作区分对资源进行了何种操作
+
+| 访问路径                 | 行为             | 请求方式        |
+| ------------------------ | ---------------- | --------------- |
+| http://localhost/users   | 查询全部用户信息 | GET(查询)       |
+| http://localhost/users/1 | 查询指定用户信息 | GET(查询)       |
+| http://localhost/users   | 添加用户信息     | POST(新增/保存) |
+| http://localhost/users   | 修改用户信息     | PUT(修改/更新)  |
+| http://localhost/users/1 | 删除用户信息     | DELETE(删除)    |
+
+根据REST风格对资源进行访问称为RESTful
+
+**描述摸块的名称通常使用复数**，也就是加s的格式描述，表示此类资源，而非单个资源，例如：users、books、accounts.…
+
+加个`@PathVariable`代表变量来自访问路径（占位），然后还要用`{}`标明路径变量，告诉哪个值给谁
+
+```java
+//{id}是路径变量，下面括号先写("/users/{id}")，然后加上,method，idea会自动把前面的value=补上
+@RequestMapping(value = "/users/{id}",method = RequestMethod.DELETE)
+@ResponseBody
+public String delete(@PathVariable Integer id){
+System.out.println("user delete..."+id);
+return "{'module':'user delete'}";
+```
+
+### `@RequestBody` `@RequestParam` `@PathVariable`
+区别
+
+* `@RequestParam`用于接收url地址传参或表单传参
+* `@RequestBody`用于接收json数据
+* `@PathVariable`用于接收路径参数，使用{参数名称)描述路径参数
+
+应用
+
+* 后期开发中，发送请求参数超过1个时，以封装成pojo然后采用json格式为主，`@RequestBody`应用较广
+* 如果发送非json格式数据，选用`@RequestParam`接收请求参数
+* 采用RESTful进行开发，当参数数量较少时，例如1个，可以采用`@PathVariable`接收请求路径变量，通常用于传递id值
+
+### 优化
+
+我们学到现在，一个Controoler是这样的
+
+```java
+@Controller
+public class BookController {
+	@RequestMapping(value = "/books", method = RequestMethod.POST)
+	@ResponseBody
+	public String save(@RequestBody Book book){
+		System.out.println("book save..."+book);
+		return "{'module':'book save'}";
+    }
+	@RequestMapping(value ="/books/{id)",method = RequestMethod.DELETE)
+	@ResponseBody
+	public String delete(@PathVariable Integer id){
+		System.out.println("book delete..."+id);
+		return "{'module':'book delete'}";
+    }
+	@RequestMapping(value = "/books", method = RequestMethod.PUT)
+	@ResponseBody
+	public String update(@RequestBody Bookbook){
+		System.out.println("book update..."+book);
+		return "{'module':'book update'}";
+    }
+}
+```
+
+显然我们在每个方法中都有重复的地方：`@ResponseBody`,`value = "/books", `
+
+我们可以像之前JavaWeb优化servlet那样，同时用上更方便的注解
+
+```java
+//@Controller
+//@ResponseBody
+@RestController//其实就是上面2个的合二为一
+@RequestMapping("/books")
+public class BookController {
+    
+	//@RequestMapping(method = RequestMethod.POST)
+    @PostMapping
+	public String save(@RequestBody Book book){
+		System.out.println("book save..."+book);
+		return "{'module':'book save'}";
+    }
+    
+	//@RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
+    @DelectMapping("/{id}")
+	public String delete(@PathVariable Integer id){
+		System.out.println("book delete..."+id);
+		return "{'module':'book delete'}";
+    }
+    
+	//@RequestMapping(method = RequestMethod.PUT)
+	@PutMapping
+    public String update(@RequestBody Bookbook){
+		System.out.println("book update..."+book);
+		return "{'module':'book update'}";
+    }
+}
+```
+
+### 放行非SpringMVC的请求
+
+我们前面设置了`SpringConfig`下的`getServletMappings`方法把所有资源拉给SpringMVC处理，但这会造成静态资源如html，css，图片等资源也被拉去SpringMVC而非交给Tomcat处理
+
+所以我们要添加一个资源的过滤
+
+```java
+//记得在SpringConfig那边@Import一下
+public class SpringMvcSupport extends WebMvcConfigurationSupport {
+@Override
+protected void addResourceHandlers(ResourceHandlerRegistry registry){
+    //给page目录添加一个资源的处理器，当访问/pages/????的时候，走/pages目录下的内容
+	registry.addResourceHandler("/pages/**").addResourceLocations("/pages/");
+	registry.addResourceHandler("/js/**").addResourceLocations("/pages/");
+	registry.addResourceHandler("/css/**").addResourceLocations("/pages/");
+	registry.addResourceHandler("/plugins/**").addResourceLocations("/pages/");
 }
 ```
 
