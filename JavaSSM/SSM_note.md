@@ -732,3 +732,21 @@ protected void addResourceHandlers(ResourceHandlerRegistry registry){
 如果xxx是一个pojo，给它加个`@Getter` `@Setter`
 
 [Spring Boot：关于“No converter found for return value of type: class xxx”的解决方法](https://blog.csdn.net/ruananqing/article/details/83099180)
+
+```java
+//@RestControllerAdvice用于标识当前类为REST风格对应的异常处理器类
+@RestControllerAdvice
+public class ProjectExceptionAdvice {
+    //除了自定义的异常处理器，保留对Exception类型的异常处理，用于处理非预期的异常
+    @ExceptionHandler(Exception.class)//定义用来处理哪一种异常
+    //通过形参把异常对象传进来
+    public Result doException(Exception ex){
+      	System.out.println("嘿嘿,异常你哪里跑！");
+        return new Result(666,null,"嘿嘿,异常你哪里跑！");
+    }
+}
+```
+
+### Postman乱码
+
+去idea把编码全转换成utf-8
