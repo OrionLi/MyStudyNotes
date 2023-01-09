@@ -46,9 +46,9 @@
 
 ### properties（以配置jdbc.properties的name为例）
 
-在SpringConfig类前加上`@PropertySource("jdbc.properties")`
+在SpringConfig类前加上`@PropertySource("classpath:jdbc.properties")`**一定一定要加`classpath:`!!!**
 
-配置多个properties请用数组：`@PropertySource({"jdbc.properties","jdbc.properties"})`
+配置多个properties请用数组：`@PropertySource({"classpath:jdbc.properties","classpath:jdbc.properties"})`
 
 **不支持使用通配符！如**`*.properties`
 
@@ -432,8 +432,6 @@ public String commonParamDifferentName(@RequestParam("name")String userName int 
 
 ### 实体类
 
-**首先给你的pojo重写toString！！！**
-
 如果形参是个实体类，并且传的属性名和实体类的属性名一样，它就会自动被打包成一个对象
 
 如果你要给实体类里面的对象传值，就用“加点”的方式传
@@ -719,3 +717,18 @@ protected void addResourceHandlers(ResourceHandlerRegistry registry){
 }
 ```
 
+#### 知识点抽查
+
+```java
+@Insert("insert into tbl_book (type,name,description)values(#{type},#{name),#{description))")
+```
+
+前面括号内的是表里面的字段名，后面括号内的才是实体类的属性
+
+![image-20230109220327532](images/image-20230109220327532.png)
+
+### 关于“No converter found for return value of type: class xxx”的解决方法
+
+如果xxx是一个pojo，给它加个`@Getter` `@Setter`
+
+[Spring Boot：关于“No converter found for return value of type: class xxx”的解决方法](https://blog.csdn.net/ruananqing/article/details/83099180)
