@@ -970,7 +970,7 @@ ResultMap拿数据的时候才会映射，存数据对好入座就可以了不�
 
 调方法加this
 
-```vue
+```js
 //分页
 handleSizeChange(val) {
     // console.log(`每页 ${val} 条`)
@@ -996,7 +996,7 @@ handleCurrentChange(val) {
 
 resultmap！（反射错误）
 
-```vue
+```js
 axios({
     method:"post",
     url:"api/Completed/brand/queryCurrentPageAndConditions?currentPage="+this.currentPage+"&pageSize="+this.pageSize,
