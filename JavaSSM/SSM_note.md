@@ -750,3 +750,100 @@ public class ProjectExceptionAdvice {
 ### Postman乱码
 
 去idea把编码全转换成utf-8
+
+# SpringBoot
+
+## 快速启动
+
+![image-20230112195107143](images/image-20230112195107143.png)
+
+到jar包所在文件夹打开cmd，
+
+```markdown
+java -jar s
+```
+
+然后按tab补全
+
+## package前记得clean
+
+
+
+---
+
+# 复习-代理
+
+代理类完成的功能：
+1.目标类中方法的调用
+2.功能增强
+
+## 反射
+
+```java
+Class<?> clazz = Class.forName("com.test.Student");
+Object instance = clazz.newInstance();//创建出学生对象
+Method method = clazz.getDeclaredMethod("test", String.class);
+//通过方法名和形参类型获取类中的方法
+method.setAccessible(true);
+method.invoke(instance, "what's up");//通过Method对象的invoke方法来调用方法
+```
+
+其中，`invoke方法`用来调用，显而易见，上面的`method`对象是通过`Student类`的`class对象`得到的
+
+所以这时`invoke方法`需要俩参数才能正确实现代理：`实例化对象`和`被代理方法的参数`
+
+## 静态代理
+
+工厂(目标)和商家(代理)都要实现`Seller`这个接口，
+
+而`Seller`接口只有一个sell方法，接收订单数(参数)，根据订单数返回单价(返回值)
+
+```java
+public interface Seller {
+    public float sell(int amount);
+}
+```
+
+工厂实现这个接口时
+
+```java
+public class UsbFactory1 implements Seller{
+    @Override
+    public float sell(int amount) {
+        //这里先统一工厂1售价为85元
+        return 85.0f;
+    }
+}
+```
+
+而商家实现这个接口时
+
+```java
+public class TaoBao implements Seller{
+    //指定卖方
+    private Seller factory1 = new UsbFactory1();
+    
+    @Override
+    public float sell(int amount) {
+        //向工厂发送订单，获取单价
+        float price = factory1.sell(amount);
+        //商家对价格进行处理(增强功能)
+        price = price + 25;
+        return price;
+    }
+}
+```
+
+然后用户找淘宝购买
+
+```java
+public class ShopMain{
+	public static void main(string[]args){
+		//创建代理的商家taobao对象
+		TaoBao taoBao = new TaoBao();
+		float price = taoBao.sell(1);
+		System.out.println("通过淘宝的商家，购买u盘单价：" + price);
+    }
+}
+```
+
