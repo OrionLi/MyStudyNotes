@@ -847,3 +847,91 @@ public class ShopMain{
 }
 ```
 
+## 动态代理
+
+![image-20230127161523903](images/image-20230127161523903.png)
+
+### 售卖接口
+
+```java
+package com.test.service;
+
+public interface UsbSeller {
+    int sell(int amount);
+}
+```
+
+### A工厂实现接口进行卖货(后期可以添加更多工厂进行功能细分)
+
+```java
+package com.test.factory;
+
+import com.test.service.UsbSeller;
+
+public class UsbFactory implements UsbSeller {
+    @Override
+    public int sell(int amount) {
+        System.out.println("工厂在卖货,售价85");
+        return 85;
+    }
+}
+```
+
+### 创建动态代理
+
+```java
+package com.test.handler;
+
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+
+public class MySellHandler implements InvocationHandler {
+    private Object target = null;
+
+    //动态代理目标是不固定的
+    public MySellHandler(Object target) {
+        this.target = target;
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        //结果初始化为null
+        Object res = null;
+        //调用目标方法
+        res = method.invoke(target, args);
+        System.out.println("商家进货");
+
+        res = (int) res + 25;
+        System.out.println("商家加价，当前售价：" + res);
+        return res;
+    }
+}
+```
+
+### Main方法调用
+
+```java
+package com.test;
+
+import com.test.factory.UsbFactory;
+import com.test.handler.MySellHandler;
+import com.test.service.UsbSeller;
+
+import java.lang.reflect.Proxy;
+
+public class MainShopper {
+    public static void main(String[] args) {
+        //1.创建目标对象
+        UsbSeller usbFactory = new UsbFactory();
+        //2. 创建InvocationHandler对象
+        MySellHandler mySellHandler = new MySellHandler(usbFactory);
+        //3. 创建代理对象
+        UsbSeller proxyInstance = (UsbSeller) Proxy.newProxyInstance(usbFactory.getClass().getClassLoader(),
+                usbFactory.getClass().getInterfaces(),
+                mySellHandler);
+        //4. 通过动态代理里执行方法
+        proxyInstance.sell(1);
+    }
+}
+```
+
