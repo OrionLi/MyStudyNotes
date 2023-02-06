@@ -92,6 +92,10 @@ public class JdbcConfig {
 }
 ```
 
+**注意:不能使用`DataSource ds = new DruidDataSource()`**
+
+因为DataSource接口中没有对应的setter方法来设置属性。
+
 #### 为第三方bean注入资源
 
 引用类型放方法形参里，会自动装配
@@ -209,6 +213,152 @@ public class AccountServiceTest {
 		System.out.println(accountService.findById(2));
     }
 }
+```
+
+# AOP（摘自青空の霞光）
+首先我们需要在主类添加`@EnableAspectJAutoProxy`注解，开启AOP注解支持：
+
+```java
+@EnableAspectJAutoProxy
+@ComponentScan("com.test.bean")
+@Configuration
+public class MainConfiguration {
+}
+```
+
+接着我们只需在定义AOP增强操作的类上添加`@Aspect`注解和`@Component`将其注册为Bean即可，就像我们之前在配置文件中也要将其注册为Bean：
+
+```java
+@Component
+@Aspect
+public class AopTest {
+
+}
+```
+
+接着，我们直接在里面编写方法，并将此方法添加到一个切点中，比如我们希望在Student的test方法执行之前执行我们的方法：
+
+```java
+public int test(String str){
+    System.out.println("我被调用了:"+str);
+    return str.length();
+}
+```
+
+只需要添加`@Before`注解即可：
+
+```java
+@Before("execution(* com.test.bean.Student.test(..))")
+public void before(){
+    System.out.println("我是之前执行的内容！");
+}
+```
+
+同样的，我们可以为其添加`JoinPoint`参数来获取切入点信息：
+
+```java
+@Before("execution(* com.test.bean.Student.test(..))")
+public void before(JoinPoint point){
+    System.out.println("参数列表："+ Arrays.toString(point.getArgs()));
+    System.out.println("我是之前执行的内容！");
+}
+```
+
+我们也可以使用`@AfterReturning`注解来指定方法返回后的操作：
+
+```java
+@AfterReturning(value = "execution(* com.test.bean.Student.test(..))", returning = "returnVal")
+public void after(Object returnVal){
+    System.out.println("方法已返回，结果为："+returnVal);
+}
+```
+
+我们还可以指定returning属性，并将其作为方法某个参数的实参。同样的，环绕也可以直接通过注解声明：
+
+```java
+@Around("execution(* com.test.bean.Student.test(..))")
+public Object around(ProceedingJoinPoint point) throws Throwable {
+    System.out.println("方法执行之前！");
+    Object val = point.proceed();
+    System.out.println("方法执行之后！");
+    return val;
+}
+```
+## 注解执行的位置
+```java
+ //把这个类声明为一个切面：需要把该类放入到IOC容器中，再声明为一个切面
+    @Aspect
+    @Component
+    public class LogginAspect {
+
+        //声明该方法是一个前置通知：在目标方法开始之前执行
+        @Before("execution(public int com.wul.spring.aop.impl.AtithmeticCalculator.*(int ,int))")
+        public void beforeMethod(JoinPoint joinPoint) {
+            String methodName = joinPoint.getSignature().getName();
+            List<Object> args = Arrays.asList(joinPoint.getArgs());
+            System.out.println("The method " + methodName + " begins with " + args);
+        }
+
+        //后置通知：在目标方法之后(无论是否发生异常)，执行的通知，
+        //在后置通知中还不能访问目标方法执行的结果。执行结果须在返回通知中访问。
+        @After("execution(public int com.wul.spring.aop.impl.AtithmeticCalculator.*(int ,int))")
+        public void afterMethod(JoinPoint joinPoint) {
+            String methodName = joinPoint.getSignature().getName();
+            System.out.println("The method " + methodName + " ends");
+
+        }
+
+        //返回通知：在目标方法正常结束执行后的通知
+        //返回通知是可以访问到目标方法的返回值的
+        @AfterReturning(value = "execution(public int com.wul.spring.aop.impl.AtithmeticCalculator.*(int,int))"
+                , returning = "result")
+        public void afterRunningMethod(JoinPoint joinPoint, Object result) {
+            String methodName = joinPoint.getSignature().getName();
+            System.out.println("The method " + methodName + " ends with the Result " + result);
+        }
+
+
+        //在目标方法出现异常时会执行的代码，
+        //可以访问到异常对象，且可以指定在出现特定异常时在执行通知代码
+        //如下面Exception ex，若是指定为NullpointerException ex就不会执行通知代码
+        @AfterThrowing(value = "execution(public int com.wul.spring.aop.impl.AtithmeticCalculator.*(int,int))"
+                , throwing = "ex")
+        public void afterThrowingMethod(JoinPoint joinPoint, Exception ex) {
+            String methodName = joinPoint.getSignature().getName();
+            System.out.println("The method " + methodName + "occurs exception:" + ex);
+        }
+
+        //坏绕通知：需要携带ProceedingJoinPoint类型的参数
+        //环绕通知类似于动态代理的全过程：ProceedingJoinPoint类型的参数可以决定是否执行目标方法
+        //且环绕通知必须有返回值，返回值即目标方法的返回值。
+        @Around("execution(public int com.wul.spring.aop.impl.AtithmeticCalculator.*(int,int))")
+        public Object aroundMethod(ProceedingJoinPoint pjd) {
+            Object result = null;
+            String methodName = pjd.getSignature().getName();
+            Object args = Arrays.asList(pjd.getArgs());
+            //执行目标方法
+            try {
+                //前置通知
+                System.out.println("Arround:The method " + methodName + " begins with " + args);
+                result = pjd.proceed();
+                //后置通知
+                System.out.println("Arround:The method " + methodName + " ends");
+            } catch (Throwable e) {
+                e.printStackTrace();
+                //异常通知
+                System.out.println("Arround:The method " + methodName + "occurs exception:" + e);
+                //throw new RuntimeException(e);
+                //不抛出异常的话，异常就被上面抓住，执行下去，返回result，result值为null，转换为int
+            } finally {
+                //返回通知
+                System.out.println("Arround:The method " + methodName + " ends with the Result " + result);
+            }
+
+            //return 100;
+            return result;
+        }
+
+    }
 ```
 
 # Spring事务
@@ -383,7 +533,7 @@ public class ServletContainersInitConfig extends AbstractDispatcherServletInitia
 }
 ```
 
-继承ADSI的子类更加简化开发
+继承`AbstractDispatcherServletInitializer`的子类更加简化开发
 
 ```java
 public class ServletContainersInitConfig extends AbstractAnnotationConfigDispatcherServletInitializer {
@@ -649,7 +799,7 @@ public class BookController {
 		System.out.println("book save..."+book);
 		return "{'module':'book save'}";
     }
-	@RequestMapping(value ="/books/{id)",method = RequestMethod.DELETE)
+	@RequestMapping(value ="/books/{id}",method = RequestMethod.DELETE)
 	@ResponseBody
 	public String delete(@PathVariable Integer id){
 		System.out.println("book delete..."+id);
@@ -901,6 +1051,7 @@ public class MySellHandler implements InvocationHandler {
         res = method.invoke(target, args);
         System.out.println("商家进货");
 
+        //进行功能增强
         res = (int) res + 25;
         System.out.println("商家加价，当前售价：" + res);
         return res;
