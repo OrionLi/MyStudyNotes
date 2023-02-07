@@ -114,6 +114,44 @@ spring:
    	  table-prefix: tbl_
    ```
 
+
+4. 默认id是雪花算法，但我们想要让他按照数据库自增来
+
+   ```yaml
+   mybatis-plus:
+     global-config:
+       db-config:
+         id-type: auto
+   ```
+
+5. 用分页查询要配置mybatis-plus的分页拦截器
+
+   ```java
+   @Configuration
+   public class MPConfig{
+   	@Bean
+   	public MybatisPlusInterceptor mybatisPlusInterceptor(){
+   		MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+   		interceptor.addInnerInterceptor(new PaginationInnerInterceptor());
+   		return interceptor;
+   	}
+   }
+   ```
+
+   > 在启动类所在包及其子包下面的`@Configuration`和标注的bean都会被加载
+
+6. 开始查询
+
+   ```java
+   @Test
+   void testGetBy2(){
+   	String name = "1";
+   	LambdaQueryWrapper<Book>lqw new LambdaQueryWrapper<Book>();
+   	lqw.like(name != null, Book::getName, name);
+   	bookDao.selectList(lqw);
+   }
+   ```
+
    
 
 # 整合Druid
