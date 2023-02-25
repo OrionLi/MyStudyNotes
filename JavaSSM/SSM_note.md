@@ -1086,3 +1086,83 @@ public class MainShopper {
 }
 ```
 
+# Mybatis-plus
+
+## 开启拦截器
+
+```java
+@Configuration
+public class MPConfig{
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor(){
+        // 定义mp拦截器
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        // 添加分页拦截器
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor());
+        //添加乐观锁拦截器
+        interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
+        //扔出去
+        return interceptor;
+    }
+}
+```
+
+## yml常用配置
+
+```yaml
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql:///架构名
+    username: root
+    password: 123456
+    type: com.alibaba.druid.pool.DruidDataSource
+  main:
+    banner-mode: off
+
+logging:
+  level:
+    root: error
+
+mybatis-plus:
+  global-config:
+    db-config:
+      id-type: auto
+      #逻辑删除字段名
+      logic-delete-field: deleted
+      #逻辑删除值
+      logic-delete-value: 1
+      #没被逻辑删除值
+      logic-not-delete-value: 0
+    banner: false
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+```
+
+## 字段映射
+
+```java
+public class User{
+    @TableField(value = "pwd", select = false)
+    private String password;
+}
+```
+
+* value：设置数据库表字段名称
+* exist：设置该字段是否在数据库存在，默认true，**不能与value合并使用**
+* select：设置属性是否参与查询。**和select()映射配置不冲突**
+
+## 乐观锁
+
+1. 表中加version字段
+
+2. 模型类添加属性
+
+   ```java
+   @Version
+   private Integer version;
+   ```
+
+3. 添加乐观锁的拦截器
+
+4. 携带version进行update操作

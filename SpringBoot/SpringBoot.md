@@ -199,3 +199,6 @@ spring:
 
    [ERROR：o.s.b.d.LoggingFailureAnalysisReporter解决办法](https://blog.csdn.net/qq_37887131/article/details/89705595)
 
+![image-20230211011321999](images/image-20230211011321999.png)
+
+Integer，如果判断条件加上`approvalStatus!=''`，传0进来approvalStatus语句不生效
