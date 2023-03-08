@@ -202,3 +202,242 @@ spring:
 ![image-20230211011321999](images/image-20230211011321999.png)
 
 Integer，如果判断条件加上`approvalStatus!=''`，传0进来approvalStatus语句不生效
+
+# 配置数据读取
+
+## 回顾：自定义bean属性绑定
+
+application.yml
+
+```yaml
+servers:
+	ipAddress: 192.168.0.1
+	port: 2345
+	timeout: -1
+```
+
+某个pojo
+
+```java
+@Component
+@Data
+@ConfigurationProperties(prefix="servers")
+public class ServerConfig {
+	private String ipAddress;
+	private int port;
+	private long timeout;
+}
+```
+
+
+
+## 第三方bean属性绑定
+
+```yaml
+datasource:
+	driverclassName: com.mysq1.jdbc.Driver456
+```
+
+```java
+@Bean
+@ConfigurationProperties(prefix="datasource")
+public DruidDataSource datasource(){
+	DruidDataSource ds new DruidDataSource();
+	return ds;
+}
+```
+
+
+
+## @EnableConfigurationProperties
+
+**`@EnableConfigurationProperties`注解可以将使用`@ConfigurationProperties`注解对应的类加入Spring容器，但由于配置时强制自动把目标注册成bean管理，所以`@EnableConfigurationProperties`与`@Component`不能同时使用**
+
+```java
+@SpringBootApplication
+@EnableConfigurationProperties(ServerConfig.class)
+public class DemoApplication{
+    
+}
+```
+
+```java
+//@Component
+@Data
+@ConfigurationProperties(prefix="servers")
+public class ServerConfig{
+    
+}
+```
+
+
+
+## 报错：未配置Spring Boot配置注释处理器
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-configuration-processor</artifactId>
+</dependency>
+```
+
+
+
+## (有且只有)`@ConfigurationProperties`绑定属性支持属性名宽松绑定
+
+**同时也是springboot推荐的做属性绑定的方式**
+
+不管yml那些配置文件是驼峰命名，还是下划线、中划线、常量命名，spring都可以根据模型类的属性名灵活适应
+
+对于下面的注解
+
+```java
+@ConfigurationProperties(prefix="dataSource")
+```
+
+spring会报错
+
+```markdown
+Invalid characters:'S'
+Bean:datasource
+Reason:Canonical names should be kebab-case ('-separated),lowercase alpha-numeric characters and must start with a letter
+```
+
+翻译过来就是典型的名字应该是烤肉串命名法(中划线分隔)，小写字母、数字和下划线，并且必须以字母开头。
+
+
+
+## 计量单位(JDK8开始)
+
+### 时间计量单位
+
+```java
+@DurationUnit(ChronoUnit.MINUTES)
+private Duration serverTimeOut;
+```
+
+### 存储空间计量单位
+
+```java
+@DatasizeUnit(DataUnit.MEGABYTES)
+private DataSize datasize;
+```
+
+> 你不加这个注释直接在yml写10MB也是能读的
+
+
+
+## 格式校验
+
+### 先导坐标
+
+就像jdbc也是一种规范,在我们学习中以MySQL驱动实现，写格式校验先导个JSR303校验规范
+
+```xml
+<dependency>
+	<groupId>javax.validation</groupId>
+	<artifactId>validation-api</artifactId>
+</dependency>
+```
+
+使用hibernate框架提供的校验器做实现类
+
+```xml
+<dependency>
+	<groupId>org.hibernate.validator</groupId>
+	<artifactId>hibernate-validator</artifactId>
+</dependency>
+```
+
+前置工作完成，下面是一个示例
+
+### 开`@Validated`，设置具体的规则
+
+```java
+@Data
+@ConfigurationProperties(prefix "servers")
+//2.开启对当前bean的属性注入校险功能
+@Validated
+public class ServerConfig{
+	//3.设置具体的规则
+	@Max(value=8888, message="最大值不能超过8888")
+	@Min(value=202, message="最小值不能低于202")
+	private int port;
+}
+```
+
+
+
+其他hibernate的使用注解
+
+`@NotEmpty`, ...
+
+
+
+## 进制数据转换规则: yml中纯数字建议使用双引号包裹
+
+### 回顾：ymal语法规则
+
+字面值表达方式
+
+```yaml
+# TRUE,true,True,FALSE,false,False均可
+boolean: TRUE
+
+# 6.8523015e+5#支持科学计数法
+f1oat: 3.14
+
+# 0b1010011101001010111
+# 支持二进制、八进制、十六进制
+# 8进制以0开头
+# 16进制0x开头
+int: 123
+
+# 使用~表示muLL
+nu11: ~
+
+# 字符串可以直接书写
+string: HelloWorld
+
+# 可以使用双引号包裹特殊字符
+string2: "Hello World"
+
+# 日期必须使用yyyy-MM-dd格式
+date: 2018-02-17
+
+# 时间和日期之间使用T连接，最后使用+代表时区
+datetime: 2018-02-17T15:02:31+08:00
+```
+
+所以当yml中有`password = 0127`，实际读取到的会变成87，正确的输入方式是`password = "0127"`
+
+
+
+# 测试
+
+## 加载测试临时属性值(常用)：properties
+
+```yaml
+test:
+	prop: 666
+```
+
+```java
+@SpringBootTest(properties = {"test.prop=777"})
+public class PropertiesAndArgsTest {
+	@Value("${test.prop}")
+	private String msg;
+    
+	@Test
+	void testProperties(){
+		System.out.println(msg);
+	}
+}
+```
+
+## 模拟命令行参数：args
+
+```java
+@SpringBootTest(args={"--test.prop=testValue2"})
+```
+
