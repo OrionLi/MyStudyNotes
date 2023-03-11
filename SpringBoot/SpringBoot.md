@@ -441,3 +441,141 @@ public class PropertiesAndArgsTest {
 @SpringBootTest(args={"--test.prop=testValue2"})
 ```
 
+## 加载测试专用配置
+
+是在测试类上面加！
+
+请注意：这里的MsgConfig是在test包下的，不是在main包下的！  
+
+```java
+@SpringBootTest
+@Import({MsgConfig.class})
+```
+
+## 加载环境，模拟请求
+
+```java
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+//开启虚拟MVC调用
+@AutoConfigureMockMvc
+public class WebTest{
+	@Test
+	//注入虚拟MVC调用对象
+	public void testWeb(@Autowired MockMvc mvc)throws Exception {
+		//创建虚拟请求，当前访问/books
+		MockHttpServletRequestBuilder builder = MockMvcRequestBuilders.get("/books");
+		//执行请求
+		ResultActions action = mvc.perform(builder);
+    }
+}
+```
+
+web环境四种启动类型：
+
+* Mock
+* DEGINED_PORT：用你定义的端口
+* RANDON_PORT：随机端口
+* NONE：默认的启动方式：啥都不干
+
+## 测试类中发送请求
+
+```java
+@Test
+void testGetById(@Autowired MockMvc mvc) throws Exception {
+    MockHttpServletRequestBuilder builder = MockMvcRequestBuilders.get("/books");
+    ResultActions action = mvc.perform(builder);
+    
+    //响应状态匹配
+    //设定预期值 与真实值进行比较，成功测试通过，失败测试失败
+    //定义本次调用的预期值
+    StatusResultMatchers status = MockMvcResultMatchers.status();
+    ResultMatcher ok = status.isOk();
+    //添加预计值到本次调用过程中进行匹配
+    action.andExpect(ok);
+
+    //响应头信息匹配
+    //设定预期值 与真实值进行比较，成功测试通过，失败测试失败
+    //定义本次调用的预期值
+    HeaderResultMatchers header = MockMvcResultMatchers.header();
+    ResultMatcher contentType = header.string("Content-Type", "application/json");
+    //添加预计值到本次调用过程中进行匹配
+    action.andExpect(contentType);
+
+    //响应体匹配
+    //设定预期值 与真实值进行比较，成功测试通过，失败测试失败
+    //定义本次调用的预期值
+    ContentResultMatchers content = MockMvcResultMatchers.content();
+    ResultMatcher result = content.json("{\"id\":1,\"name\":\"springboot\",\"type\":\"springboot\"}");
+    //添加预计值到本次调用过程中进行匹配
+    action.andExpect(result);
+}
+```
+
+## 业务层做测试
+
+**只有InnoDB才支持事务！**
+
+可以在测试类上面加`@Transactional`进行事务管理，自动回滚所有操作，防止在数据库留痕，此时`@Rollback()`括号中默认为true
+
+## 随机值测试
+
+对于测试用例的数据固定书写肯定是不合理的，springboot提供了在配置中使用随机值的机制，确保每次运行程序加载的数据都是随机的。具体如下：
+
+```yaml
+testcase:
+  book:
+    id: ${random.int}
+    id2: ${random.int(10)}
+    type: ${random.int!5,10!}
+    name: ${random.value}
+    uuid: ${random.uuid}
+    publishTime: ${random.long}
+```
+
+
+
+当前配置就可以在每次运行程序时创建一组随机数据，避免每次运行时数据都是固定值的尴尬现象发生，有助于测试功能的进行。数据的加载按照之前加载数据的形式，使用@ConfigurationProperties注解即可
+
+```JAVA
+@Component
+@Data
+@ConfigurationProperties(prefix = "testcase.book")
+public class BookCase {
+    private int id;
+    private int id2;
+    private int type;
+    private String name;
+    private String uuid;
+    private long publishTime;
+}
+```
+
+
+
+对于随机值的产生，还有一些小的限定规则，比如产生的数值性数据可以设置范围等，具体如下：
+
+- ${random.int}表示随机整数
+- ${random.int(10)}表示10以内的随机数
+- ${random.int(10,20)}表示10到20的随机数
+- 其中()可以是任意字符，例如[]，!!均可
+
+**总结**
+
+# Spring(Boot)内置
+
+## 数据源：默认HikariCP实现
+
+轻量级，特别快
+
+## 持久化技术：JDBCTemPlate
+
+古法编程，跳过了
+
+## 数据库：H2
+
+极为轻巧，直接在内存中运行，特别适合在测试中用
+
+
+
+# NoSQL
+
